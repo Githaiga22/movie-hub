@@ -28,4 +28,19 @@ export const getTrendingMovies = async (): Promise<PaginatedMovies> => {
     // In a real app, you'd want to handle this error more gracefully
     throw error;
   }
+};
+
+export const searchMovies = async (query: string): Promise<PaginatedMovies> => {
+  if (!query) {
+    return { page: 1, results: [], total_pages: 1, total_results: 0 };
+  }
+  try {
+    const response = await api.get<PaginatedMovies>('/search', {
+      params: { q: query },
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Failed to search for movies with query "${query}":`, error);
+    throw error;
+  }
 }; 
