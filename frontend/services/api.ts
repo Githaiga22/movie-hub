@@ -54,6 +54,12 @@ export interface CombinedMovieDetails {
     character: string;
     profile_path: string;
   }[];
+  trailer: {
+    key: string;
+    name: string;
+    site: string;
+    type: string;
+  } | null;
 }
 
 export const getTrendingMovies = async (): Promise<PaginatedMovies> => {
