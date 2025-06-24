@@ -303,4 +303,77 @@ func GetMovieDetails(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, combinedDetails)
+}
+
+// DiscoverMoviesByGenre fetches movies from TMDB based on a genre ID.
+func DiscoverMoviesByGenre(c *gin.Context) {
+	tmdbAPIKey := os.Getenv("TMDB_API_KEY")
+	if tmdbAPIKey == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "API key is not configured on the server."})
+		return
+	}
+
+	genreID := c.Param("id")
+	page := c.DefaultQuery("page", "1")
+
+	url := "https://api.themoviedb.org/3/discover/movie?with_genres=" + genreID + "&language=en-US&page=" + page
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create request to external service."})
+		return
+	}
+
+	req.Header.Add("accept", "application/json")
+	req.Header.Add("Authorization", "Bearer "+tmdbAPIKey)
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil || res.StatusCode != http.StatusOK {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Failed to fetch data from external service."})
+		return
+	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read response from external service."})
+		return
+	}
+
+	c.Data(res.StatusCode, res.Header.Get("Content-Type"), body)
+}
+
+// GetGenreList fetches the official list of movie genres from TMDB.
+func GetGenreList(c *gin.Context) {
+	tmdbAPIKey := os.Getenv("TMDB_API_KEY")
+	if tmdbAPIKey == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "API key is not configured on the server."})
+		return
+	}
+
+	url := "https://api.themoviedb.org/3/genre/movie/list?language=en"
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create request to external service."})
+		return
+	}
+
+	req.Header.Add("accept", "application/json")
+	req.Header.Add("Authorization", "Bearer "+tmdbAPIKey)
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil || res.StatusCode != http.StatusOK {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Failed to fetch data from external service."})
+		return
+	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read response from external service."})
+		return
+	}
+
+	c.Data(res.StatusCode, res.Header.Get("Content-Type"), body)
 } 
