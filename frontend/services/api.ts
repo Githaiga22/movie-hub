@@ -19,6 +19,37 @@ export interface PaginatedMovies {
   total_results: number;
 }
 
+// --- From tmdb.go ---
+interface TMDBMovieDetails {
+  id: number;
+  imdb_id: string;
+  title: string;
+  overview: string;
+  poster_path: string;
+  release_date: string;
+  vote_average: number;
+  genres: { id: number; name: string }[];
+  tagline: string;
+  runtime: number;
+}
+
+interface OMDBRating {
+  Source: string;
+  Value: string;
+}
+
+interface OMDBDetails {
+  Rated: string;
+  Awards: string;
+  Ratings: OMDBRating[];
+  Plot: string;
+}
+
+export interface CombinedMovieDetails {
+  tmdb: TMDBMovieDetails;
+  omdb: OMDBDetails;
+}
+
 export const getTrendingMovies = async (): Promise<PaginatedMovies> => {
   try {
     const response = await api.get<PaginatedMovies>('/trending');
@@ -41,6 +72,16 @@ export const searchMovies = async (query: string): Promise<PaginatedMovies> => {
     return response.data;
   } catch (error) {
     console.error(`Failed to search for movies with query "${query}":`, error);
+    throw error;
+  }
+};
+
+export const getMovieDetails = async (id: string): Promise<CombinedMovieDetails> => {
+  try {
+    const response = await api.get<CombinedMovieDetails>(`/movie/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Failed to fetch details for movie ${id}:`, error);
     throw error;
   }
 }; 
