@@ -1,9 +1,10 @@
 'use client';
 
-import { getMovieDetails, CombinedMovieDetails } from '@/services/api';
+import { getMovieDetails, CombinedMovieDetails, Movie } from '@/services/api';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useWatchlist } from '@/context/WatchlistContext';
 
 const DetailSkeleton = () => (
   <div className="min-h-screen bg-black text-white p-8 animate-pulse">
@@ -31,6 +32,7 @@ export default function MovieDetailPage() {
   const [movie, setMovie] = useState<CombinedMovieDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { addMovie, removeMovie, isMovieInWatchlist } = useWatchlist();
 
   useEffect(() => {
     if (!id) return;
@@ -55,6 +57,24 @@ export default function MovieDetailPage() {
   if (!movie) return null;
 
   const { tmdb, omdb, cast } = movie;
+  const isInWatchlist = isMovieInWatchlist(tmdb.id);
+
+  const handleWatchlistToggle = () => {
+      // We need to construct a 'Movie' object from the 'tmdb' details
+      const movieForWatchlist: Movie = {
+          id: tmdb.id,
+          title: tmdb.title,
+          poster_path: tmdb.poster_path,
+          release_date: tmdb.release_date,
+          vote_average: tmdb.vote_average,
+      };
+
+      if (isInWatchlist) {
+          removeMovie(tmdb.id);
+      } else {
+          addMovie(movieForWatchlist);
+      }
+  }
 
   return (
     <div
@@ -80,6 +100,14 @@ export default function MovieDetailPage() {
           </div>
           <div className="w-full md:w-2/3">
             <h1 className="text-4xl md:text-5xl font-extrabold mb-2">{tmdb.title}</h1>
+            <button
+                onClick={handleWatchlistToggle}
+                className={`w-full mb-4 px-4 py-2 rounded-lg text-white font-bold transition-colors ${
+                    isInWatchlist ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-700 hover:bg-gray-600'
+                }`}
+            >
+                {isInWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'}
+            </button>
             <p className="text-gray-400 italic mb-4">{tmdb.tagline}</p>
             <div className="flex items-center gap-4 mb-4 text-gray-300">
               <span>{tmdb.release_date.substring(0, 4)}</span>
