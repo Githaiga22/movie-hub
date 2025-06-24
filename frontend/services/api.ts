@@ -48,6 +48,12 @@ interface OMDBDetails {
 export interface CombinedMovieDetails {
   tmdb: TMDBMovieDetails;
   omdb: OMDBDetails;
+  cast: {
+    id: number;
+    name: string;
+    character: string;
+    profile_path: string;
+  }[];
 }
 
 export const getTrendingMovies = async (): Promise<PaginatedMovies> => {
@@ -82,6 +88,18 @@ export const getMovieDetails = async (id: string): Promise<CombinedMovieDetails>
     return response.data;
   } catch (error) {
     console.error(`Failed to fetch details for movie ${id}:`, error);
+    throw error;
+  }
+};
+
+export const getMovieList = async (category: string, page: number = 1): Promise<PaginatedMovies> => {
+  try {
+    const response = await api.get<PaginatedMovies>(`/movies/${category}`, {
+      params: { page },
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Failed to fetch ${category} movies:`, error);
     throw error;
   }
 }; 

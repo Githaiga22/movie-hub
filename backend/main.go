@@ -24,6 +24,7 @@ func main() {
 		api.GET("/trending", handlers.GetTrendingMovies)
 		api.GET("/search", handlers.SearchMovies)
 		api.GET("/movie/:id", handlers.GetMovieDetails)
+		api.GET("/movies/:category", handlers.GetMovieList)
 	}
 
 	// Health check endpoint

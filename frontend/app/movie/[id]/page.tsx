@@ -54,7 +54,7 @@ export default function MovieDetailPage() {
   if (error) return <div className="min-h-screen bg-black text-white text-center py-20"><p className="text-red-500">{error}</p></div>;
   if (!movie) return null;
 
-  const { tmdb, omdb } = movie;
+  const { tmdb, omdb, cast } = movie;
 
   return (
     <div
@@ -114,6 +114,34 @@ export default function MovieDetailPage() {
             )}
           </div>
         </div>
+
+        {/* Cast Section */}
+        {cast && cast.length > 0 && (
+          <div className="mt-12">
+            <h2 className="text-2xl font-bold mb-4">Top Cast</h2>
+            <div className="flex overflow-x-auto space-x-4 pb-4">
+              {cast.slice(0, 20).map((actor, index) => (
+                <div key={`${actor.id}-${index}`} className="flex-shrink-0 w-32 text-center">
+                  <div className="relative w-full rounded-full overflow-hidden" style={{ paddingTop: '100%' }}>
+                    {actor.profile_path ? (
+                      <img
+                        src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`}
+                        alt={actor.name}
+                        className="absolute top-0 left-0 w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="absolute top-0 left-0 w-full h-full bg-gray-700 flex items-center justify-center">
+                        <span className="text-gray-400 text-xs">No Image</span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="font-bold mt-2 text-sm">{actor.name}</p>
+                  <p className="text-xs text-gray-400">{actor.character}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -43,10 +43,19 @@ type OMDBDetails struct {
 	Plot       string       `json:"Plot"`
 }
 
+// --- Structs for TMDB Credits Response ---
+type CastMember struct {
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Character   string `json:"character"`
+	ProfilePath string `json:"profile_path"`
+}
+
 // --- Combined Struct for Final API Response ---
 type CombinedMovieDetails struct {
 	TMDBDetails TMDBMovieDetails `json:"tmdb"`
 	OMDBDetails OMDBDetails      `json:"omdb"`
+	Cast        []CastMember     `json:"cast"`
 }
 
 // GetTrendingMovies fetches trending movies from the TMDB API and proxies the response.
@@ -159,6 +168,56 @@ func SearchMovies(c *gin.Context) {
 	c.JSON(http.StatusOK, searchResponse)
 }
 
+// GetMovieList fetches a list of movies (e.g., popular, top_rated) from TMDB.
+func GetMovieList(c *gin.Context) {
+	tmdbAPIKey := os.Getenv("TMDB_API_KEY")
+	if tmdbAPIKey == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "API key is not configured on the server."})
+		return
+	}
+
+	category := c.Param("category")
+	page := c.DefaultQuery("page", "1")
+
+	// Validate category to prevent arbitrary calls to TMDB
+	validCategories := map[string]bool{
+		"popular":      true,
+		"top_rated":    true,
+		"upcoming":     true,
+		"now_playing":  true,
+	}
+	if !validCategories[category] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid movie category specified."})
+		return
+	}
+
+	url := "https://api.themoviedb.org/3/movie/" + category + "?language=en-US&page=" + page
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create request to external service."})
+		return
+	}
+
+	req.Header.Add("accept", "application/json")
+	req.Header.Add("Authorization", "Bearer "+tmdbAPIKey)
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil || res.StatusCode != http.StatusOK {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Failed to fetch data from external service."})
+		return
+	}
+	defer res.Body.Close()
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read response from external service."})
+		return
+	}
+
+	c.Data(res.StatusCode, res.Header.Get("Content-Type"), body)
+}
+
 // GetMovieDetails fetches combined details for a single movie from TMDB and OMDB.
 func GetMovieDetails(c *gin.Context) {
 	tmdbAPIKey := os.Getenv("TMDB_API_KEY")
@@ -189,10 +248,32 @@ func GetMovieDetails(c *gin.Context) {
 		return
 	}
 
-	// Step 2: Fetch details from OMDB using IMDb ID from TMDB response
+	// Step 2: Fetch credits from TMDB
+	var cast []CastMember
+	creditsURL := "https://api.themoviedb.org/3/movie/" + movieID + "/credits"
+	req, _ = http.NewRequest("GET", creditsURL, nil)
+	req.Header.Add("Authorization", "Bearer "+tmdbAPIKey)
+	req.Header.Add("accept", "application/json")
+
+	res, err = http.DefaultClient.Do(req)
+	if err == nil && res.StatusCode == http.StatusOK {
+		var creditsResponse struct {
+			Cast []CastMember `json:"cast"`
+		}
+		if err := json.NewDecoder(res.Body).Decode(&creditsResponse); err == nil {
+			cast = creditsResponse.Cast
+		} else {
+			log.Printf("Could not parse TMDB credits response: %v", err)
+		}
+	} else {
+		log.Printf("Could not fetch TMDB credits: %v", err)
+	}
+	defer res.Body.Close()
+
+	// Step 3: Fetch details from OMDB using IMDb ID from TMDB response
 	if tmdbDetails.IMDB_ID == "" {
-		// If no IMDb ID, we can't query OMDB, so just return TMDB details
-		c.JSON(http.StatusOK, CombinedMovieDetails{TMDBDetails: tmdbDetails})
+		// If no IMDb ID, we can't query OMDB, so just return TMDB details + Cast
+		c.JSON(http.StatusOK, CombinedMovieDetails{TMDBDetails: tmdbDetails, Cast: cast})
 		return
 	}
 
@@ -201,7 +282,7 @@ func GetMovieDetails(c *gin.Context) {
 	if err != nil || res.StatusCode != http.StatusOK {
 		// Non-critical error, so we can still return the TMDB data
 		log.Printf("Could not fetch from OMDB: %v", err)
-		c.JSON(http.StatusOK, CombinedMovieDetails{TMDBDetails: tmdbDetails})
+		c.JSON(http.StatusOK, CombinedMovieDetails{TMDBDetails: tmdbDetails, Cast: cast})
 		return
 	}
 	defer res.Body.Close()
@@ -209,15 +290,16 @@ func GetMovieDetails(c *gin.Context) {
 	var omdbDetails OMDBDetails
 	if err := json.NewDecoder(res.Body).Decode(&omdbDetails); err != nil {
 		log.Printf("Could not parse OMDB response: %v", err)
-		// Again, return TMDB data as a fallback
-		c.JSON(http.StatusOK, CombinedMovieDetails{TMDBDetails: tmdbDetails})
+		// Again, return TMDB data + cast as a fallback
+		c.JSON(http.StatusOK, CombinedMovieDetails{TMDBDetails: tmdbDetails, Cast: cast})
 		return
 	}
 
-	// Step 3: Combine and return
+	// Step 4: Combine and return
 	combinedDetails := CombinedMovieDetails{
 		TMDBDetails: tmdbDetails,
 		OMDBDetails: omdbDetails,
+		Cast:        cast,
 	}
 
 	c.JSON(http.StatusOK, combinedDetails)
