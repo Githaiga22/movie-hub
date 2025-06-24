@@ -1,10 +1,10 @@
-# 🎬 Movie Hub
+#  Movie Hub
 
 **Movie Hub** is a full-stack Movie and TV Show Discovery Web App built with **Go (Golang)** for the backend and **React with Next.js (App Router)** for the frontend. The app is designed to deliver a clean, modern, and responsive user experience inspired by platforms like **Netflix**, **Amazon Prime**, and **MovieBox**.
 
 ---
 
-## 🚀 Project Goals
+##  Project Goals
 
 The goal of this project is to create an all-in-one entertainment discovery platform that allows users to:
 
@@ -18,45 +18,45 @@ The goal of this project is to create an all-in-one entertainment discovery plat
 
 ---
 
-## ✅ Core Features (MVP)
+##  Core Features (MVP)
 
-### 🔎 Search Functionality
+###  Search Functionality
 - Real-time search for movies/TV shows
 - Debounced input to minimize API load
 - Paginated results
 
-### 📄 Detailed View Pages
+###  Detailed View Pages
 - Title, plot, cast, release date
 - Poster images and ratings (IMDB, Rotten Tomatoes, TMDB)
 
-### 📝 Watchlist Management
+###  Watchlist Management
 - Add/remove items from watchlist
 - Mark items as watched
 - Stored in `localStorage`
 
-### 📈 Trending Dashboard
+###  Trending Dashboard
 - Discover currently popular content from TMDB
 
-### 🎭 Genre & Category Browsing
+###  Genre & Category Browsing
 - Filter movies/shows by genre or category
 
-### 🤖 Recommendation Engine
+###  Recommendation Engine
 - Suggest content based on user’s watch history/preferences
 
-### 🌗 Dark/Light Theme Toggle
+###  Dark/Light Theme Toggle
 
-### ▶️ Trailer Integration
+###  Trailer Integration
 - Embed official trailers using YouTube API
 
-### 📤 Export Watchlist
+###  Export Watchlist
 - Export watchlist as **CSV** or **PDF**
 
-### 📲 Social Features (Bonus)
+###  Social Features (Bonus)
 - Share your favorite titles with friends
 
 ---
 
-## 🔧 API Integration
+##  API Integration
 
 - **TMDB API** – Primary source for movies/TV shows, images, trending data
 - **OMDB API** – Additional ratings, IMDb IDs, extended plot info
@@ -71,15 +71,15 @@ The goal of this project is to create an all-in-one entertainment discovery plat
 
 ---
 
-## ⚙️ Tech Stack
+##  Tech Stack
 
-### 🌐 Frontend – React + Next.js
+###  Frontend – TypeScript + Next.js
 - App Router architecture with TypeScript
 - Fully mobile-responsive (Netflix-style UI)
 - Modular components with reusable hooks
 - State management via `useContext` or Zustand (planned)
 
-### 🖥 Backend – Go (Golang)
+###  Backend – Go (Golang)
 - REST API for handling all external data
 - Organized with modular `handlers/` structure
 - Uses `net/http`, `os`, and `joho/godotenv` for routing and env config
