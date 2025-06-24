@@ -102,4 +102,31 @@ export const getMovieList = async (category: string, page: number = 1): Promise<
     console.error(`Failed to fetch ${category} movies:`, error);
     throw error;
   }
+};
+
+export interface Genre {
+  id: number;
+  name: string;
+}
+
+export const getGenreList = async (): Promise<{ genres: Genre[] }> => {
+  try {
+    const response = await api.get<{ genres: Genre[] }>('/genres');
+    return response.data;
+  } catch (error) {
+    console.error(`Failed to fetch genre list:`, error);
+    throw error;
+  }
+};
+
+export const getMoviesByGenre = async (genreId: string, page: number = 1): Promise<PaginatedMovies> => {
+  try {
+    const response = await api.get<PaginatedMovies>(`/discover/genre/${genreId}`, {
+      params: { page },
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Failed to fetch movies for genre ${genreId}:`, error);
+    throw error;
+  }
 }; 
