@@ -1,4 +1,10 @@
+
 #  Movie Hub
+
+
+<div align="center">
+  <img src="./moviehub.png" alt="Movie Hub Logo" width="1000" />
+</div>
 
 **Movie Hub** is a full-stack Movie and TV Show Discovery Web App built with **Go (Golang)** for the backend and **React with Next.js (App Router)** for the frontend. The app is designed to deliver a clean, modern, and responsive user experience inspired by platforms like **Netflix**, **Amazon Prime**, and **MovieBox**.
 
@@ -41,7 +47,7 @@ The goal of this project is to create an all-in-one entertainment discovery plat
 - Filter movies/shows by genre or category
 
 ###  Recommendation Engine
-- Suggest content based on user’s watch history/preferences
+- Suggest content based on user's watch history/preferences
 
 ###  Dark/Light Theme Toggle
 
@@ -85,4 +91,3 @@ The goal of this project is to create an all-in-one entertainment discovery plat
 - Uses `net/http`, `os`, and `joho/godotenv` for routing and env config
 - Plans for middleware (logging, error handling, etc.)
 
----
