@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { getTrendingMovies, searchMovies, Movie } from '../services/api';
 import { useDebounce } from '../hooks/useDebounce';
+import Link from 'next/link';
 
 const MovieCard = ({ movie }: { movie: Movie }) => (
   <div className="bg-gray-800 rounded-lg overflow-hidden shadow-lg transform transition-transform duration-300 hover:scale-105 flex flex-col">
@@ -36,10 +37,11 @@ const MovieGridSkeleton = () => (
 
 export default function HomePage() {
   const [movies, setMovies] = useState<Movie[]>([]);
-  const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]); // Cache
+  const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [noResults, setNoResults] = useState(false);
 
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
 
@@ -47,22 +49,27 @@ export default function HomePage() {
     const fetchMovies = async () => {
       try {
         setLoading(true);
+        setError(null);
+        setNoResults(false);
+
         if (debouncedSearchQuery) {
           const data = await searchMovies(debouncedSearchQuery);
           setMovies(data.results);
+          if (data.results.length === 0) {
+            setNoResults(true);
+          }
         } else {
           // Use cache if available, otherwise fetch trending
           if (trendingMovies.length > 0) {
             setMovies(trendingMovies);
           } else {
             const data = await getTrendingMovies();
-            setTrendingMovies(data.results); // Cache the results
+            setTrendingMovies(data.results);
             setMovies(data.results);
           }
         }
-        setError(null);
-      } catch (err) {
-        setError('Failed to load movies. Please try again later.');
+      } catch (err: any) {
+        setError(err?.response?.data?.error || 'Failed to load movies. Please try again later.');
         console.error(err);
       } finally {
         setLoading(false);
@@ -83,7 +90,7 @@ export default function HomePage() {
           Search, explore, and build your watchlist. Your next favorite movie or show is just a click away!
         </p>
         {/* Search Bar */}
-        <div className="w-full max-w-xl">
+        <div className="w-full max-w-xl relative">
           <input
             type="text"
             placeholder="Search for movies or TV shows..."
@@ -91,6 +98,11 @@ export default function HomePage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
+          {loading && searchQuery && (
+            <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+            </div>
+          )}
         </div>
       </section>
       
@@ -99,21 +111,24 @@ export default function HomePage() {
         <h2 className="text-2xl font-bold mb-6">
           {searchQuery ? `Results for "${searchQuery}"` : 'Trending Now'}
         </h2>
-        {loading ? (
+        {loading && !searchQuery ? (
           <MovieGridSkeleton />
         ) : error ? (
           <div className="text-center text-red-500 bg-red-900/20 p-4 rounded-lg">
             <p>{error}</p>
           </div>
+        ) : noResults ? (
+          <div className="text-center p-8">
+            <p className="text-xl text-gray-400">No movies found matching "{searchQuery}"</p>
+            <p className="text-gray-500 mt-2">Try adjusting your search terms or browse our trending movies.</p>
+          </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-            {movies.length > 0 ? (
-              movies.map((movie) => (
-                <MovieCard key={movie.id} movie={movie} />
-              ))
-            ) : (
-              <p>No results found.</p>
-            )}
+            {movies.map((movie) => (
+              <Link href={`/movie/${movie.id}`} key={movie.id} passHref>
+                <MovieCard movie={movie} />
+              </Link>
+            ))}
           </div>
         )}
       </section>
