@@ -22,6 +22,7 @@ func main() {
 	api := r.Group("/api")
 	{
 		api.GET("/trending", handlers.GetTrendingMovies)
+		api.GET("/search", handlers.SearchMovies)
 	}
 
 	// Health check endpoint
