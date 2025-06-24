@@ -1,95 +1,24 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { getTrendingMovies, searchMovies, Movie } from '../services/api';
-import { useDebounce } from '../hooks/useDebounce';
-import Link from 'next/link';
-
-const MovieCard = ({ movie }: { movie: Movie }) => (
-  <div className="bg-gray-800 rounded-lg overflow-hidden shadow-lg transform transition-transform duration-300 hover:scale-105 flex flex-col">
-    <div className="relative w-full" style={{ paddingTop: '150%' /* 2:3 aspect ratio */ }}>
-      {movie.poster_path ? (
-        <img
-          src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
-          alt={movie.title}
-          className="absolute top-0 left-0 w-full h-full object-cover"
-        />
-      ) : (
-        <div className="absolute top-0 left-0 w-full h-full bg-gray-700 flex items-center justify-center">
-          <span className="text-gray-400 text-sm text-center p-2">No Poster</span>
-        </div>
-      )}
-    </div>
-    <div className="p-3 mt-auto">
-      <h3 className="font-bold text-md truncate">{movie.title}</h3>
-      <p className="text-sm text-gray-400">{movie.release_date?.substring(0, 4)}</p>
-    </div>
-  </div>
-);
-
-const MovieGridSkeleton = () => (
-  <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-    {Array.from({ length: 12 }).map((_, i) => (
-      <div key={i} className="bg-gray-800 rounded-lg animate-pulse" style={{ paddingBottom: '150%' }} />
-    ))}
-  </div>
-);
+import React, { useState } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
+import { MovieCarousel } from '@/app/components/MovieCarousel';
+import { SearchResults } from '@/app/components/SearchResults';
 
 export default function HomePage() {
-  const [movies, setMovies] = useState<Movie[]>([]);
-  const [trendingMovies, setTrendingMovies] = useState<Movie[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [noResults, setNoResults] = useState(false);
-
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
-
-  useEffect(() => {
-    const fetchMovies = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        setNoResults(false);
-
-        if (debouncedSearchQuery) {
-          const data = await searchMovies(debouncedSearchQuery);
-          setMovies(data.results);
-          if (data.results.length === 0) {
-            setNoResults(true);
-          }
-        } else {
-          // Use cache if available, otherwise fetch trending
-          if (trendingMovies.length > 0) {
-            setMovies(trendingMovies);
-          } else {
-            const data = await getTrendingMovies();
-            setTrendingMovies(data.results);
-            setMovies(data.results);
-          }
-        }
-      } catch (err: any) {
-        setError(err?.response?.data?.error || 'Failed to load movies. Please try again later.');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMovies();
-  }, [debouncedSearchQuery, trendingMovies]);
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
-      {/* Hero Section */}
-      <section className="flex flex-col items-center justify-center py-20 px-4">
+      {/* Hero and Search Section */}
+      <section className="flex flex-col items-center justify-center py-12 px-4">
         <h1 className="text-5xl md:text-6xl font-extrabold mb-4 text-center">
           Discover Movies & TV Shows
         </h1>
         <p className="text-lg md:text-2xl text-gray-300 mb-8 text-center max-w-2xl">
           Search, explore, and build your watchlist. Your next favorite movie or show is just a click away!
         </p>
-        {/* Search Bar */}
         <div className="w-full max-w-xl relative">
           <input
             type="text"
@@ -98,40 +27,22 @@ export default function HomePage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          {loading && searchQuery && (
-            <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-            </div>
-          )}
         </div>
       </section>
       
-      {/* Content Section */}
-      <section className="max-w-7xl mx-auto px-4 py-10">
-        <h2 className="text-2xl font-bold mb-6">
-          {searchQuery ? `Results for "${searchQuery}"` : 'Trending Now'}
-        </h2>
-        {loading && !searchQuery ? (
-          <MovieGridSkeleton />
-        ) : error ? (
-          <div className="text-center text-red-500 bg-red-900/20 p-4 rounded-lg">
-            <p>{error}</p>
-          </div>
-        ) : noResults ? (
-          <div className="text-center p-8">
-            <p className="text-xl text-gray-400">No movies found matching "{searchQuery}"</p>
-            <p className="text-gray-500 mt-2">Try adjusting your search terms or browse our trending movies.</p>
-          </div>
+      {/* Conditional Content Section */}
+      <div className="max-w-7xl mx-auto px-4 py-10">
+        {debouncedSearchQuery ? (
+          <SearchResults query={debouncedSearchQuery} />
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6">
-            {movies.map((movie) => (
-              <Link href={`/movie/${movie.id}`} key={movie.id} passHref>
-                <MovieCard movie={movie} />
-              </Link>
-            ))}
-          </div>
+          <>
+            <MovieCarousel category="now_playing" title="Now Playing" />
+            <MovieCarousel category="popular" title="Popular" />
+            <MovieCarousel category="top_rated" title="Top Rated" />
+            <MovieCarousel category="upcoming" title="Upcoming" />
+          </>
         )}
-      </section>
+      </div>
     </main>
   );
 }
