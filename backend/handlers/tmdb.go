@@ -51,11 +51,20 @@ type CastMember struct {
 	ProfilePath string `json:"profile_path"`
 }
 
+// --- Structs for TMDB Videos Response ---
+type Video struct {
+	Key  string `json:"key"`
+	Name string `json:"name"`
+	Site string `json:"site"`
+	Type string `json:"type"`
+}
+
 // --- Combined Struct for Final API Response ---
 type CombinedMovieDetails struct {
 	TMDBDetails TMDBMovieDetails `json:"tmdb"`
 	OMDBDetails OMDBDetails      `json:"omdb"`
 	Cast        []CastMember     `json:"cast"`
+	Trailer     *Video           `json:"trailer"`
 }
 
 // GetTrendingMovies fetches trending movies from the TMDB API and proxies the response.
@@ -270,10 +279,39 @@ func GetMovieDetails(c *gin.Context) {
 	}
 	defer res.Body.Close()
 
-	// Step 3: Fetch details from OMDB using IMDb ID from TMDB response
+	// Step 3: Fetch videos from TMDB to find the official trailer
+	var officialTrailer *Video
+	videosURL := "https://api.themoviedb.org/3/movie/" + movieID + "/videos"
+	req, _ = http.NewRequest("GET", videosURL, nil)
+	req.Header.Add("Authorization", "Bearer "+tmdbAPIKey)
+	req.Header.Add("accept", "application/json")
+
+	res, err = http.DefaultClient.Do(req)
+	if err == nil && res.StatusCode == http.StatusOK {
+		var videosResponse struct {
+			Results []Video `json:"results"`
+		}
+		if err := json.NewDecoder(res.Body).Decode(&videosResponse); err == nil {
+			// Find the first video that is an official "Trailer" on "YouTube"
+			for i := range videosResponse.Results {
+				video := videosResponse.Results[i]
+				if video.Site == "YouTube" && video.Type == "Trailer" {
+					officialTrailer = &video
+					break
+				}
+			}
+		} else {
+			log.Printf("Could not parse TMDB videos response: %v", err)
+		}
+	} else {
+		log.Printf("Could not fetch TMDB videos: %v", err)
+	}
+	defer res.Body.Close()
+
+	// Step 4: Fetch details from OMDB using IMDb ID from TMDB response
 	if tmdbDetails.IMDB_ID == "" {
-		// If no IMDb ID, we can't query OMDB, so just return TMDB details + Cast
-		c.JSON(http.StatusOK, CombinedMovieDetails{TMDBDetails: tmdbDetails, Cast: cast})
+		// If no IMDb ID, we can't query OMDB, so just return TMDB details
+		c.JSON(http.StatusOK, CombinedMovieDetails{TMDBDetails: tmdbDetails, Cast: cast, Trailer: officialTrailer})
 		return
 	}
 
@@ -282,7 +320,7 @@ func GetMovieDetails(c *gin.Context) {
 	if err != nil || res.StatusCode != http.StatusOK {
 		// Non-critical error, so we can still return the TMDB data
 		log.Printf("Could not fetch from OMDB: %v", err)
-		c.JSON(http.StatusOK, CombinedMovieDetails{TMDBDetails: tmdbDetails, Cast: cast})
+		c.JSON(http.StatusOK, CombinedMovieDetails{TMDBDetails: tmdbDetails, Cast: cast, Trailer: officialTrailer})
 		return
 	}
 	defer res.Body.Close()
@@ -290,16 +328,17 @@ func GetMovieDetails(c *gin.Context) {
 	var omdbDetails OMDBDetails
 	if err := json.NewDecoder(res.Body).Decode(&omdbDetails); err != nil {
 		log.Printf("Could not parse OMDB response: %v", err)
-		// Again, return TMDB data + cast as a fallback
-		c.JSON(http.StatusOK, CombinedMovieDetails{TMDBDetails: tmdbDetails, Cast: cast})
+		// Again, return TMDB data as a fallback
+		c.JSON(http.StatusOK, CombinedMovieDetails{TMDBDetails: tmdbDetails, Cast: cast, Trailer: officialTrailer})
 		return
 	}
 
-	// Step 4: Combine and return
+	// Step 5: Combine and return
 	combinedDetails := CombinedMovieDetails{
 		TMDBDetails: tmdbDetails,
 		OMDBDetails: omdbDetails,
 		Cast:        cast,
+		Trailer:     officialTrailer,
 	}
 
 	c.JSON(http.StatusOK, combinedDetails)

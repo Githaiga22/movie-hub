@@ -25,6 +25,42 @@ const DetailSkeleton = () => (
   </div>
 );
 
+const TrailerModal = ({
+  videoKey,
+  onClose,
+}: {
+  videoKey: string;
+  onClose: () => void;
+}) => (
+  <div
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+    onClick={onClose}
+  >
+    <div
+      className="relative w-full max-w-6xl aspect-video bg-black rounded-lg overflow-hidden shadow-2xl"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Close Button */}
+      <button
+        onClick={onClose}
+        className="absolute -top-10 right-0 text-white text-4xl hover:scale-110 transition"
+        aria-label="Close trailer"
+      >
+        &times;
+      </button>
+
+      {/* YouTube Trailer */}
+      <iframe
+        src={`https://www.youtube.com/embed/${videoKey}?autoplay=1`}
+        title="YouTube trailer"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowFullScreen
+        className="w-full h-full"
+      />
+    </div>
+  </div>
+);
+
 
 export default function MovieDetailPage() {
   const params = useParams();
@@ -32,7 +68,8 @@ export default function MovieDetailPage() {
   const [movie, setMovie] = useState<CombinedMovieDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { addMovie, removeMovie, isMovieInWatchlist } = useWatchlist();
+  const [showTrailer, setShowTrailer] = useState(false);
+  const { addMovie, removeMovie, isMovieInWatchlist, markAsWatched, unmarkAsWatched, isMovieWatched } = useWatchlist();
 
   useEffect(() => {
     if (!id) return;
@@ -56,8 +93,9 @@ export default function MovieDetailPage() {
   if (error) return <div className="min-h-screen bg-black text-white text-center py-20"><p className="text-red-500">{error}</p></div>;
   if (!movie) return null;
 
-  const { tmdb, omdb, cast } = movie;
+  const { tmdb, omdb, cast, trailer } = movie;
   const isInWatchlist = isMovieInWatchlist(tmdb.id);
+  const isWatched = isMovieWatched(tmdb.id);
 
   const handleWatchlistToggle = () => {
       // We need to construct a 'Movie' object from the 'tmdb' details
@@ -76,101 +114,141 @@ export default function MovieDetailPage() {
       }
   }
 
+  const handleWatchedToggle = () => {
+      if(isWatched) {
+          unmarkAsWatched(tmdb.id);
+      } else {
+          markAsWatched(tmdb.id);
+          // Also add to watchlist if it's not already there
+          if (!isInWatchlist) {
+            handleWatchlistToggle();
+          }
+      }
+  }
+
   return (
-    <div
-      className="min-h-screen bg-black text-white"
-      style={{
-        backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.95) 100%), url(https://image.tmdb.org/t/p/original${tmdb.poster_path})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'top center',
-        backgroundAttachment: 'fixed',
-      }}
-    >
-      <div className="max-w-5xl mx-auto p-8">
-        <Link href="/" className="text-red-500 hover:text-red-400 transition-colors mb-8 inline-block">
-          &larr; Back to Home
-        </Link>
-        <div className="flex flex-col md:flex-row gap-8">
-          <div className="w-full md:w-1/3">
-            <img
-              src={`https://image.tmdb.org/t/p/w500${tmdb.poster_path}`}
-              alt={tmdb.title}
-              className="rounded-lg shadow-2xl w-full"
-            />
-          </div>
-          <div className="w-full md:w-2/3">
-            <h1 className="text-4xl md:text-5xl font-extrabold mb-2">{tmdb.title}</h1>
-            <button
-                onClick={handleWatchlistToggle}
-                className={`w-full mb-4 px-4 py-2 rounded-lg text-white font-bold transition-colors ${
-                    isInWatchlist ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-700 hover:bg-gray-600'
-                }`}
-            >
-                {isInWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'}
-            </button>
-            <p className="text-gray-400 italic mb-4">{tmdb.tagline}</p>
-            <div className="flex items-center gap-4 mb-4 text-gray-300">
-              <span>{tmdb.release_date.substring(0, 4)}</span>
-              <span>•</span>
-              <span>{omdb.Rated || 'Not Rated'}</span>
-              <span>•</span>
-              <span>{tmdb.runtime} min</span>
+    <>
+      {showTrailer && trailer && <TrailerModal videoKey={trailer.key} onClose={() => setShowTrailer(false)} />}
+      <div
+        className="min-h-screen bg-black text-white"
+        style={{
+          backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.95) 100%), url(https://image.tmdb.org/t/p/original${tmdb.poster_path})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'top center',
+          backgroundAttachment: 'fixed',
+        }}
+      >
+        <div className="max-w-5xl mx-auto p-8">
+          <Link href="/" className="text-red-500 hover:text-red-400 transition-colors mb-8 inline-block">
+            &larr; Back to Home
+          </Link>
+          <div className="flex flex-col md:flex-row gap-8">
+            <div className="w-full md:w-1/3">
+              <img
+                src={`https://image.tmdb.org/t/p/w500${tmdb.poster_path}`}
+                alt={tmdb.title}
+                className="rounded-lg shadow-2xl w-full"
+              />
+              {trailer && (
+                <button
+                    onClick={() => setShowTrailer(true)}
+                    className="w-full mt-4 px-4 py-2 rounded-lg bg-white text-black font-bold flex items-center justify-center gap-2 hover:bg-gray-200"
+                >
+                    {/* Play Icon */}
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                    Watch Trailer
+                </button>
+              )}
             </div>
-            
-            <div className="flex flex-wrap gap-2 mb-6">
-              {tmdb.genres.map(g => <span key={g.id} className="bg-gray-800 px-3 py-1 rounded-full text-sm">{g.name}</span>)}
-            </div>
-
-            <h2 className="text-2xl font-bold mb-2">Plot</h2>
-            <p className="text-gray-300 mb-6">{omdb.Plot || tmdb.overview}</p>
-            
-            <h3 className="text-xl font-bold mb-3">Ratings</h3>
-            <div className="flex gap-4 items-start mb-6">
-              {omdb.Ratings?.map(r => (
-                <div key={r.Source} className="bg-gray-800/50 p-3 rounded-lg text-center">
-                  <p className="font-bold text-lg">{r.Value}</p>
-                  <p className="text-xs text-gray-400">{r.Source}</p>
-                </div>
-              ))}
-            </div>
-
-            {omdb.Awards && (
-              <div>
-                <h3 className="text-xl font-bold mb-2">Awards</h3>
-                <p className="text-gray-400">{omdb.Awards}</p>
+            <div className="w-full md:w-2/3">
+              <h1 className="text-4xl md:text-5xl font-extrabold mb-2">{tmdb.title}</h1>
+              <div className="flex space-x-2 mb-4">
+                <button
+                    onClick={handleWatchlistToggle}
+                    className={`flex-grow px-4 py-2 rounded-lg text-white font-bold transition-colors ${
+                        isInWatchlist ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-700 hover:bg-gray-600'
+                    }`}
+                >
+                    {isInWatchlist ? 'Remove from Watchlist' : 'Add to Watchlist'}
+                </button>
+                 <button
+                    onClick={handleWatchedToggle}
+                    title={isWatched ? 'Unmark as watched' : 'Mark as watched'}
+                    className={`p-2 rounded-lg text-white font-bold transition-colors ${
+                        isWatched ? 'bg-sky-500 hover:bg-sky-600' : 'bg-gray-700 hover:bg-gray-600'
+                    }`}
+                >
+                    {/* Eye Icon */}
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                 </button>
               </div>
-            )}
-          </div>
-        </div>
+              <p className="text-gray-400 italic mb-4">{tmdb.tagline}</p>
+              <div className="flex items-center gap-4 mb-4 text-gray-300">
+                <span>{tmdb.release_date.substring(0, 4)}</span>
+                <span>•</span>
+                <span>{omdb.Rated || 'Not Rated'}</span>
+                <span>•</span>
+                <span>{tmdb.runtime} min</span>
+              </div>
+              
+              <div className="flex flex-wrap gap-2 mb-6">
+                {tmdb.genres.map(g => <span key={g.id} className="bg-gray-800 px-3 py-1 rounded-full text-sm">{g.name}</span>)}
+              </div>
 
-        {/* Cast Section */}
-        {cast && cast.length > 0 && (
-          <div className="mt-12">
-            <h2 className="text-2xl font-bold mb-4">Top Cast</h2>
-            <div className="flex overflow-x-auto space-x-4 pb-4">
-              {cast.slice(0, 20).map((actor, index) => (
-                <div key={`${actor.id}-${index}`} className="flex-shrink-0 w-32 text-center">
-                  <div className="relative w-full rounded-full overflow-hidden" style={{ paddingTop: '100%' }}>
-                    {actor.profile_path ? (
-                      <img
-                        src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`}
-                        alt={actor.name}
-                        className="absolute top-0 left-0 w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="absolute top-0 left-0 w-full h-full bg-gray-700 flex items-center justify-center">
-                        <span className="text-gray-400 text-xs">No Image</span>
-                      </div>
-                    )}
+              <h2 className="text-2xl font-bold mb-2">Plot</h2>
+              <p className="text-gray-300 mb-6">{omdb.Plot || tmdb.overview}</p>
+              
+              <h3 className="text-xl font-bold mb-3">Ratings</h3>
+              <div className="flex gap-4 items-start mb-6">
+                {omdb.Ratings?.map(r => (
+                  <div key={r.Source} className="bg-gray-800/50 p-3 rounded-lg text-center">
+                    <p className="font-bold text-lg">{r.Value}</p>
+                    <p className="text-xs text-gray-400">{r.Source}</p>
                   </div>
-                  <p className="font-bold mt-2 text-sm">{actor.name}</p>
-                  <p className="text-xs text-gray-400">{actor.character}</p>
+                ))}
+              </div>
+
+              {omdb.Awards && (
+                <div>
+                  <h3 className="text-xl font-bold mb-2">Awards</h3>
+                  <p className="text-gray-400">{omdb.Awards}</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
-        )}
+
+          {/* Cast Section */}
+          {cast && cast.length > 0 && (
+            <div className="mt-12">
+              <h2 className="text-2xl font-bold mb-4">Top Cast</h2>
+              <div className="flex overflow-x-auto space-x-4 pb-4">
+                {cast.slice(0, 20).map((actor, index) => (
+                  <div key={`${actor.id}-${index}`} className="flex-shrink-0 w-32 text-center">
+                    <div className="relative w-full rounded-full overflow-hidden" style={{ paddingTop: '100%' }}>
+                      {actor.profile_path ? (
+                        <img
+                          src={`https://image.tmdb.org/t/p/w185${actor.profile_path}`}
+                          alt={actor.name}
+                          className="absolute top-0 left-0 w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="absolute top-0 left-0 w-full h-full bg-gray-700 flex items-center justify-center">
+                          <span className="text-gray-400 text-xs">No Image</span>
+                        </div>
+                      )}
+                    </div>
+                    <p className="font-bold mt-2 text-sm">{actor.name}</p>
+                    <p className="text-xs text-gray-400">{actor.character}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 } 
